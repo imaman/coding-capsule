@@ -74,17 +74,6 @@ if (!fs.existsSync(repoDir) || !fs.statSync(repoDir).isDirectory()) {
 const claudeDir = path.join(os.homedir(), ".claude");
 const claudeJson = path.join(os.homedir(), ".claude.json");
 
-// Ensure config files exist on the host so we can mount them read-only.
-// An empty file is harmless and prevents code inside the container from
-// creating a new settings file with malicious hooks or permission allow-lists.
-const configFiles = ["settings.json", "settings.local.json"];
-for (const f of configFiles) {
-  const p = path.join(claudeDir, f);
-  if (!fs.existsSync(p)) {
-    fs.writeFileSync(p, "");
-  }
-}
-
 // Resolve latest Claude Code version
 const claudeVersion = await fetch(
   "https://registry.npmjs.org/@anthropic-ai/claude-code/latest"
@@ -102,6 +91,12 @@ fs.writeFileSync(path.join(tmpDir, "Dockerfile"), dockerfile(claudeVersion));
 fs.writeFileSync(path.join(tmpDir, "entrypoint.sh"), ENTRYPOINT, {
   mode: 0o755,
 });
+
+// Copy ~/.claude/ to tmpDir for read-only mounting.
+// Session data paths are mounted back rw from the host for persistence.
+const stagedHomeClaudeDir = path.join(tmpDir, "home-claude");
+fs.cpSync(claudeDir, stagedHomeClaudeDir, { recursive: true });
+const sessionDataPaths = ["projects", "history.jsonl"];
 
 // Stage repo-level config for read-only overlay mounts.
 // Protects .claude/ (settings, agents, MCP config) from tampering inside the container.
@@ -147,12 +142,12 @@ try {
       "--workdir",
       repoDir,
       "-v",
-      `${claudeDir}:/home/node/.claude`,
+      `${stagedHomeClaudeDir}:/home/node/.claude:ro`,
       "-v",
       `${claudeJson}:/home/node/.claude.json:ro`,
-      ...configFiles.flatMap((f) => [
+      ...sessionDataPaths.flatMap((p) => [
         "-v",
-        `${path.join(claudeDir, f)}:/home/node/.claude/${f}:ro`,
+        `${path.join(claudeDir, p)}:/home/node/.claude/${p}`,
       ]),
       "-v",
       `${repoDir}:${repoDir}`,
