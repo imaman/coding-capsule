@@ -120,8 +120,18 @@ if (fs.existsSync(repoMcpJson)) {
 }
 repoConfigMounts.push("-v", `${stagedMcpJson}:${repoMcpJson}:rw`);
 
-// Pre-create mount points in the repo as the current user so that Docker
-// (running as root) does not create them as root-owned entries on the host.
+// Pre-create mount points so Docker doesn't leave root-owned entries on the host.
+// Here's what happens at mounting time:
+// 1. Docker bind-mounts repoDir into the container at the same path
+// 2. Docker then overlays staged copies on top: stagedClaudeDir → <repoDir>/.claude,
+//    stagedMcpJson → <repoDir>/.mcp.json
+// 3. For these overlay mounts, Docker needs the target paths to exist inside the
+//    already-mounted repoDir — which means they must exist on the host filesystem
+// 4. If they don't exist, the Docker daemon (running as root) creates them as
+//    root-owned directories (even for targets that should be files, e.g., .mcp.json)
+// 5. After the container exits, these root-owned entries remain in the user's repo
+// By creating them ourselves beforehand (as the current user) we avoid step 4.
+// They are cleaned up on exit if we were the ones who created them.
 const createdMountPoints = [];
 if (!fs.existsSync(repoClaudeDir)) {
   fs.mkdirSync(repoClaudeDir);
@@ -181,6 +191,7 @@ try {
     throw e;
   }
 } finally {
+  // Clean up mount points we pre-created (see comment at creation site above).
   for (const p of createdMountPoints) {
     fs.rmSync(p, { recursive: true, force: true });
   }
