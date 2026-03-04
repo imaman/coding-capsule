@@ -143,9 +143,10 @@ for (const m of mounts) {
 
   const entityType = m.type ?? "dir";
 
-  // Snapshot: copy source into tmpDir so the container gets an isolated copy.
+  // Snapshot: copy source into a dedicated temp dir so the container gets an isolated copy.
   if (m.snapshot) {
-    const staged = path.join(tmpDir, `staged-${path.basename(hostPath)}`);
+    const snapshotDir = fs.mkdtempSync(path.join(tmpDir, "snapshot-"));
+    const staged = path.join(snapshotDir, path.basename(hostPath));
     if (entityType === "dir") {
       if (fs.existsSync(hostPath)) {
         fs.cpSync(hostPath, staged, { recursive: true });
