@@ -109,7 +109,7 @@ if (fs.existsSync(repoClaudeDir)) {
 } else {
   fs.mkdirSync(stagedClaudeDir);
 }
-repoConfigMounts.push("-v", `${stagedClaudeDir}:${repoClaudeDir}:rw`);
+repoConfigMounts.push("-v", `${stagedClaudeDir}:${repoClaudeDir}:ro`);
 
 const repoMcpJson = path.join(repoDir, ".mcp.json");
 const stagedMcpJson = path.join(tmpDir, "repo-mcp.json");
@@ -118,7 +118,7 @@ if (fs.existsSync(repoMcpJson)) {
 } else {
   fs.writeFileSync(stagedMcpJson, "");
 }
-repoConfigMounts.push("-v", `${stagedMcpJson}:${repoMcpJson}:rw`);
+repoConfigMounts.push("-v", `${stagedMcpJson}:${repoMcpJson}:ro`);
 
 // Pre-create mount points so Docker doesn't leave root-owned entries on the host.
 // Here's what happens at mounting time:
