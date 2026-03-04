@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
@@ -9,7 +7,7 @@ import { hideBin } from "yargs/helpers";
 
 const IMAGE_NAME = "coding-capsule";
 
-function dockerfile(claudeVersion) {
+function dockerfile(claudeVersion: string): string {
   return `FROM node:20-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \\
@@ -63,7 +61,7 @@ const argv = yargs(hideBin(process.argv))
   .version()
   .parseSync();
 
-const repoDir = path.resolve(argv.repoDir);
+const repoDir = path.resolve(argv.repoDir as string);
 const claudeArgs = argv._.map(String);
 
 if (!fs.existsSync(repoDir) || !fs.statSync(repoDir).isDirectory()) {
@@ -82,7 +80,7 @@ const claudeVersion = await fetch(
     if (!r.ok) throw new Error(`npm registry returned ${r.status}`);
     return r.json();
   })
-  .then((data) => data.version);
+  .then((data: { version: string }) => data.version);
 console.log(`Using Claude Code v${claudeVersion}`);
 
 // Create temp build context
@@ -100,7 +98,7 @@ const sessionDataPaths = ["projects", "history.jsonl"];
 
 // Stage repo-level config for read-only overlay mounts.
 // Protects .claude/ (settings, agents, MCP config) from tampering inside the container.
-const repoConfigMounts = [];
+const repoConfigMounts: string[] = [];
 
 const repoClaudeDir = path.join(repoDir, ".claude");
 const stagedClaudeDir = path.join(tmpDir, "repo-claude");
@@ -132,7 +130,7 @@ repoConfigMounts.push("-v", `${stagedMcpJson}:${repoMcpJson}:ro`);
 // 5. After the container exits, these root-owned entries remain in the user's repo
 // By creating them ourselves beforehand (as the current user) we avoid step 4.
 // They are cleaned up on exit if we were the ones who created them.
-const createdMountPoints = [];
+const createdMountPoints: string[] = [];
 if (!fs.existsSync(repoClaudeDir)) {
   fs.mkdirSync(repoClaudeDir);
   createdMountPoints.push(repoClaudeDir);
@@ -157,7 +155,7 @@ try {
       "--rm",
       "-it",
       "--user",
-      `${process.getuid()}:${process.getgid()}`,
+      `${process.getuid!()}:${process.getgid!()}`,
       "-e",
       "HOME=/home/node",
       "-e",
@@ -182,10 +180,11 @@ try {
     ],
     { stdio: "inherit" }
   );
-} catch (e) {
-  if (e.status != null) {
+} catch (e: unknown) {
+  const err = e as { status?: number };
+  if (err.status != null) {
     // Docker ran but exited non-zero; it already printed its error via stdio: "inherit".
-    exitCode = e.status;
+    exitCode = err.status;
   } else {
     // Failed to launch Docker (e.g., not installed).
     throw e;
