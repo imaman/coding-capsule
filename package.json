@@ -4,11 +4,14 @@
   "description": "Run Claude Code in a sandboxed Docker container",
   "type": "module",
   "bin": {
-    "coding-capsule": "src/coding-capsule.js"
+    "coding-capsule": "dist/coding-capsule.js"
   },
   "files": [
-    "src/"
+    "dist/"
   ],
+  "scripts": {
+    "build": "tsc"
+  },
   "keywords": [
     "claude",
     "docker",
@@ -30,5 +33,10 @@
   },
   "dependencies": {
     "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/yargs": "^17.0.0",
+    "typescript": "^5.7.0"
   }
 }

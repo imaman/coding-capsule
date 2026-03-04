@@ -7,9 +7,13 @@ import fs from "node:fs";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
+function failMe(message: string): never {
+  throw new Error(message);
+}
+
 const IMAGE_NAME = "coding-capsule";
 
-function dockerfile(claudeVersion) {
+function dockerfile(claudeVersion: string): string {
   return `FROM node:20-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \\
@@ -52,11 +56,11 @@ exec "$@"
 
 const argv = yargs(hideBin(process.argv))
   .usage("$0 <repo-dir> [claude args..]")
-  .command("$0 <repo-dir>", "Run Claude Code in a sandboxed Docker container", (yargs) => {
-    yargs.positional("repo-dir", {
-      describe: "Path to the repository directory to mount",
-      type: "string",
-    });
+  .command("$0 <repo-dir>", "Run Claude Code in a sandboxed Docker container")
+  .option("repo-dir", {
+    describe: "Path to the repository directory to mount",
+    type: "string",
+    demandOption: true,
   })
   .strict(false)
   .help()
@@ -82,7 +86,7 @@ const claudeVersion = await fetch(
     if (!r.ok) throw new Error(`npm registry returned ${r.status}`);
     return r.json();
   })
-  .then((data) => data.version);
+  .then((data: { version: string }) => data.version);
 console.log(`Using Claude Code v${claudeVersion}`);
 
 // Create temp build context
@@ -100,7 +104,7 @@ const sessionDataPaths = ["projects", "history.jsonl"];
 
 // Stage repo-level config for read-only overlay mounts.
 // Protects .claude/ (settings, agents, MCP config) from tampering inside the container.
-const repoConfigMounts = [];
+const repoConfigMounts: string[] = [];
 
 const repoClaudeDir = path.join(repoDir, ".claude");
 const stagedClaudeDir = path.join(tmpDir, "repo-claude");
@@ -132,7 +136,7 @@ repoConfigMounts.push("-v", `${stagedMcpJson}:${repoMcpJson}:ro`);
 // 5. After the container exits, these root-owned entries remain in the user's repo
 // By creating them ourselves beforehand (as the current user) we avoid step 4.
 // They are cleaned up on exit if we were the ones who created them.
-const createdMountPoints = [];
+const createdMountPoints: string[] = [];
 if (!fs.existsSync(repoClaudeDir)) {
   fs.mkdirSync(repoClaudeDir);
   createdMountPoints.push(repoClaudeDir);
@@ -157,7 +161,7 @@ try {
       "--rm",
       "-it",
       "--user",
-      `${process.getuid()}:${process.getgid()}`,
+      `${(process.getuid ?? failMe("process.getuid is not available"))()}:${(process.getgid ?? failMe("process.getgid is not available"))()}`,
       "-e",
       "HOME=/home/node",
       "-e",
@@ -182,8 +186,8 @@ try {
     ],
     { stdio: "inherit" }
   );
-} catch (e) {
-  if (e.status != null) {
+} catch (e: unknown) {
+  if (typeof e === "object" && e !== null && "status" in e && typeof e.status === "number") {
     // Docker ran but exited non-zero; it already printed its error via stdio: "inherit".
     exitCode = e.status;
   } else {
