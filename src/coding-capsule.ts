@@ -137,10 +137,20 @@ const mounts: Partial<Record<string, BindMount>> = {
 const dockerVolArgs: string[] = [];
 const createdMountPoints: string[] = [];
 
+// Sort mounts so that a parent directory is mounted before its children (overlays).
+// We explicitly check for parent-child relationships (one path is a prefix of the other
+// followed by '/') rather than relying on lexicographic ordering, which can be misleading:
+// e.g., localeCompare considers "/home/node/.claude" < "/home/node/.claude.json" even though
+// they are siblings, not parent-child.
+function withTrailingSlash(p: string): string {
+  return p.endsWith('/') ? p : p + '/';
+}
 const sortedMounts = Object.entries(mounts).sort(([a], [b]) => {
-  const aKey = a.endsWith('/') ? a : a + '/';
-  const bKey = b.endsWith('/') ? b : b + '/';
-  return aKey.localeCompare(bKey);
+  const aSlash = withTrailingSlash(a);
+  const bSlash = withTrailingSlash(b);
+  if (b.startsWith(aSlash)) return -1; // a is parent of b
+  if (a.startsWith(bSlash)) return 1; // b is parent of a
+  return a.localeCompare(b); // siblings — order is irrelevant for correctness
 });
 
 for (const [container, m] of sortedMounts) {
