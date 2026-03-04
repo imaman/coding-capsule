@@ -132,7 +132,7 @@ try {
   });
 
   // Run
-  const result = execFileSync(
+  execFileSync(
     "docker",
     [
       "run",
