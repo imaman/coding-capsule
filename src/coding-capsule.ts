@@ -105,7 +105,7 @@ const repoMcpJson = path.join(repoDir, ".mcp.json");
 type BindMount = {
   host: string;
   container: string;
-  mode?: "ro" | "rw";
+  mode: "ro" | "rw";
   /** Whether the host path is a directory or a regular file. Defaults to "dir". */
   type?: "dir" | "file";
   /**
@@ -124,11 +124,11 @@ const mounts: BindMount[] = [
   { host: claudeDir, container: "/home/node/.claude", mode: "rw", snapshot: true },
   // Claude authentication
   { host: claudeJson, container: "/home/node/.claude.json", mode: "rw" },
-  // Session data persistence (rw back into the staged .claude)
-  { host: path.join(claudeDir, "projects"), container: "/home/node/.claude/projects" },
-  { host: path.join(claudeDir, "history.jsonl"), container: "/home/node/.claude/history.jsonl" },
+  // Session data persistence (rw directly into the real ~/.claude)
+  { host: path.join(claudeDir, "projects"), container: "/home/node/.claude/projects", mode: "rw" },
+  { host: path.join(claudeDir, "history.jsonl"), container: "/home/node/.claude/history.jsonl", mode: "rw" },
   // Repository
-  { host: repoDir, container: repoDir },
+  { host: repoDir, container: repoDir, mode: "rw" },
   // Repo config overlays (read-only staged copies protect settings from tampering)
   { host: repoClaudeDir, container: repoClaudeDir, mode: "ro", snapshot: true, ensureHost: true },
   { host: repoMcpJson, container: repoMcpJson, mode: "ro", type: "file", snapshot: true, ensureHost: true },
@@ -173,7 +173,7 @@ for (const m of mounts) {
     createdMountPoints.push(m.container);
   }
 
-  const spec = m.mode ? `${hostPath}:${m.container}:${m.mode}` : `${hostPath}:${m.container}`;
+  const spec = `${hostPath}:${m.container}:${m.mode}`;
   dockerVolArgs.push("-v", spec);
 }
 
