@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
@@ -132,7 +132,7 @@ try {
   });
 
   // Run
-  const child = spawn(
+  const result = execFileSync(
     "docker",
     [
       "run",
@@ -164,8 +164,11 @@ try {
     ],
     { stdio: "inherit" }
   );
-
-  child.on("exit", (code) => process.exit(code || 0));
+} catch (err) {
+  process.exitCode = err.status ?? 1;
+  if (!err.status) {
+    console.error(err.message ?? err);
+  }
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
