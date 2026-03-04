@@ -138,10 +138,8 @@ const dockerVolArgs: string[] = [];
 const createdMountPoints: string[] = [];
 
 // Sort mounts so that a parent directory is mounted before its children (overlays).
-// We explicitly check for parent-child relationships (one path is a prefix of the other
-// followed by '/') rather than relying on lexicographic ordering, which can be misleading:
-// e.g., localeCompare considers "/home/node/.claude" < "/home/node/.claude.json" even though
-// they are siblings, not parent-child.
+// Plain localeCompare happens to get this right (a parent is always a string prefix of its
+// child, so it sorts first), but the explicit startsWith check makes the intent obvious.
 function withTrailingSlash(p: string): string {
   return p.endsWith('/') ? p : p + '/';
 }
