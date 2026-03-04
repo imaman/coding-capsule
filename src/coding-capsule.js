@@ -96,7 +96,6 @@ fs.writeFileSync(path.join(tmpDir, "entrypoint.sh"), ENTRYPOINT, {
 // Session data paths are mounted back rw from the host for persistence.
 const stagedHomeClaudeDir = path.join(tmpDir, "home-claude");
 fs.cpSync(claudeDir, stagedHomeClaudeDir, { recursive: true });
-const sessionDataPaths = ["projects", "history.jsonl"];
 
 // Stage repo-level config for read-only overlay mounts.
 // Protects .claude/ (settings, agents, MCP config) from tampering inside the container.
