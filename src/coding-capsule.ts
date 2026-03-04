@@ -5,6 +5,10 @@ import fs from "node:fs";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
+function failMe(message: string): never {
+  throw new Error(message);
+}
+
 const IMAGE_NAME = "coding-capsule";
 
 function dockerfile(claudeVersion: string): string {
@@ -61,7 +65,7 @@ const argv = yargs(hideBin(process.argv))
   .version()
   .parseSync();
 
-const repoDir = path.resolve(argv.repoDir as string);
+const repoDir = path.resolve(typeof argv.repoDir === "string" ? argv.repoDir : failMe("missing required argument: repo-dir"));
 const claudeArgs = argv._.map(String);
 
 if (!fs.existsSync(repoDir) || !fs.statSync(repoDir).isDirectory()) {
@@ -155,7 +159,7 @@ try {
       "--rm",
       "-it",
       "--user",
-      `${process.getuid!()}:${process.getgid!()}`,
+      `${(process.getuid ?? failMe("process.getuid is not available"))()}:${(process.getgid ?? failMe("process.getgid is not available"))()}`,
       "-e",
       "HOME=/home/node",
       "-e",
@@ -181,10 +185,9 @@ try {
     { stdio: "inherit" }
   );
 } catch (e: unknown) {
-  const err = e as { status?: number };
-  if (err.status != null) {
+  if (typeof e === "object" && e !== null && "status" in e && typeof e.status === "number") {
     // Docker ran but exited non-zero; it already printed its error via stdio: "inherit".
-    exitCode = err.status;
+    exitCode = e.status;
   } else {
     // Failed to launch Docker (e.g., not installed).
     throw e;
