@@ -45,7 +45,8 @@ WORKDIR /home/node/repo
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["zsh"]
 
-RUN curl -fsSL https://claude.ai/install.sh | bash -s ${claudeVersion}
+RUN curl -fsSL https://claude.ai/install.sh | bash -s ${claudeVersion} \\
+    && claude --version
 `;
 }
 
