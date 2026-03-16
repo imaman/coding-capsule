@@ -21,6 +21,23 @@ if (args.includes("--version")) {
   process.exit(0);
 }
 
+if (args.includes("--help")) {
+  console.log(`Usage: coding-capsule [options] [-- claude-args...]
+
+Run Claude Code in a sandboxed Docker container.
+
+Options:
+  -p, --expose-port <port>
+                        Forward a host port into the container so that
+                        localhost:<port> inside the container reaches the
+                        host. Can be specified multiple times.
+  --version             Show version number and exit.
+  --help                Show this help message and exit.
+
+All other arguments are forwarded to claude inside the container.`);
+  process.exit(0);
+}
+
 function dockerfile(claudeVersion: string): string {
   return `FROM node:20-bookworm
 
@@ -77,7 +94,7 @@ exec "$@"
 const exposedPorts: number[] = [];
 const claudeArgs: string[] = [];
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--expose-port") {
+  if (args[i] === "--expose-port" || args[i] === "-p") {
     const raw = args[++i];
     if (raw === undefined) {
       console.error("Error: --expose-port requires a port number");
