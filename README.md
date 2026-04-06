@@ -55,7 +55,7 @@ coding-capsule --no-truecolor /path/to/repo
 - The container runs as the same UID/GID as your host user, so file ownership in the repo is preserved
 
 > [!WARNING]
-> Your Claude session credentials are readable inside the container. A prompt injection attack (e.g., malicious instructions hidden in a repo file) could read the credentials and exfiltrate them over the network. The token is only useful for Claude API calls, not for accessing your machine or GitHub, but be aware of this risk. To mitigate it, you could add an egress proxy that restricts outbound traffic to known-good domains.
+> Your Claude Code credentials are readable inside the container. A prompt injection attack (e.g., malicious instructions hidden in a repo file) could exfiltrate them over the network. The credentials are only useful for Claude API calls — they cannot access your machine, GitHub, or other services. The exact blast radius depends on the authentication method (OAuth token vs. raw API key). To mitigate this, you could add an egress proxy that restricts outbound traffic to known-good domains.
 
 ## Security analysis
 
@@ -92,7 +92,7 @@ Docker with open network and minimal host mounts. It's the pragmatic sweet spot:
 - Simple to set up — `npx coding-capsule /path/to/repo` and you're running
 - Repo damage is irrelevant (source-controlled)
 
-The trade-off is that the Claude session credentials are readable inside the container and could theoretically be exfiltrated over the open network. We accept this because (a) the token is only useful for Claude API calls, and (b) adding an egress proxy to close this gap is possible but adds significant complexity.
+The trade-off is that the Claude Code credentials are readable inside the container and could theoretically be exfiltrated over the open network. We accept this because (a) the credentials are only useful for Claude API calls — they cannot access your machine, GitHub, or other services, and (b) adding an egress proxy to close this gap is possible but adds significant complexity.
 
 ## Undoing changes
 

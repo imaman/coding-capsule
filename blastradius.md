@@ -18,7 +18,7 @@ The agent also has unrestricted outbound network access. When `--expose-port` is
 
 | Risk | Impact | Likelihood |
 |---|---|---|
-| Anthropic API key theft | High — the plaintext Anthropic API key in the snapshotted `~/.claude.json` is readable inside the container and can be trivially exfiltrated over the open network. No other host API keys or credentials are exposed. | Easy |
+| Claude credential theft | Varies — the Claude Code credentials stored in the snapshotted `~/.claude/` are readable inside the container and can be exfiltrated over the open network. The blast radius depends on the authentication method: an OAuth token (from `claude login`) is scoped to API inference, profile info, and file uploads; a raw API key (from `ANTHROPIC_API_KEY`) allows arbitrary API calls billed to the key owner. In either case, the credential cannot access your machine, GitHub, or other services. No other host credentials are exposed. | Easy |
 | Source code exfiltration | High — full read access to the mounted repo + outbound network | Easy |
 | Conversation history leak | Medium — session data (`projects/`, `history.jsonl`) is directly mounted read-write; everything else in `~/.claude/` is readable via the snapshotted copy | Easy |
 | Conversation history destruction | Medium — session data is directly mounted read-write and not source-controlled; deletion or corruption is not easily reversible | Easy |
@@ -34,7 +34,7 @@ The same approach protects project-level config: the repo's `.claude/` directory
 
 ## Discussion
 
-Anthropic API key theft and source code exfiltration are high-impact but cannot be mitigated architecturally — the agent needs to read source code to do its job, and the Anthropic API key is required for it to function. These are accepted risks inherent to the tool's purpose. Conversation history leak and destruction are consequences of session data being mounted read-write for persistence — the agent needs write access to save sessions, which also means it can exfiltrate or destroy them. This data is not source-controlled, so destruction is not easily reversible.
+Claude credential theft and source code exfiltration are impactful but cannot be mitigated architecturally — the agent needs to read source code to do its job, and the credential is required for it to function. These are accepted risks inherent to the tool's purpose. Conversation history leak and destruction are consequences of session data being mounted read-write for persistence — the agent needs write access to save sessions, which also means it can exfiltrate or destroy them. This data is not source-controlled, so destruction is not easily reversible.
 
 Several other risks were considered and excluded from the table:
 
