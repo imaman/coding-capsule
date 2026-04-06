@@ -29,12 +29,30 @@ npm install -g coding-capsule
 coding-capsule /path/to/repo
 ```
 
+### CLI options
+
+| Option | Alias | Default | Description |
+|--------|-------|---------|-------------|
+| `--expose-port` | `-p` | — | Forward a host port into the container so that `localhost:<port>` inside the container reaches the host. Can be specified multiple times. |
+| `--truecolor` | — | `true` | Set `COLORTERM=truecolor` inside the container. Disable with `--no-truecolor`. |
+| `--version` | — | — | Show version number. |
+| `--help` | — | — | Show help. |
+
+```bash
+# Forward ports 3000 and 8080 into the container
+coding-capsule -p 3000 -p 8080 /path/to/repo
+
+# Disable true-color support
+coding-capsule --no-truecolor /path/to/repo
+```
+
 ## What's sandboxed
 
-- Your Claude auth credentials (`~/.claude` and `~/.claude.json`) are bind-mounted into the container
+- Your Claude auth credentials (`~/.claude` and `~/.claude.json`) are snapshotted (copied) into the container — the container cannot modify the originals. Session history and project settings mount directly for persistence.
 - No access to `~/.ssh`, `~/.aws`, `~/.config`, or any other host files
 - Network is open (the agent needs it for npm, docs, etc.)
 - The Docker image is built automatically from an embedded Dockerfile — no manual setup required
+- The container runs as the same UID/GID as your host user, so file ownership in the repo is preserved
 
 > [!WARNING]
 > Your Claude session credentials are readable inside the container. A prompt injection attack (e.g., malicious instructions hidden in a repo file) could read the credentials and exfiltrate them over the network. The token is only useful for Claude API calls, not for accessing your machine or GitHub, but be aware of this risk. To mitigate it, you could add an egress proxy that restricts outbound traffic to known-good domains.
