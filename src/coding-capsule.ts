@@ -245,8 +245,41 @@ for (const [container, m] of sortedMounts) {
   dockerVolArgs.push("-v", spec);
 }
 
+// Warn when the Docker daemon runs in rootful mode (the default). A rootful daemon runs
+// as root, so being able to talk to it is root-equivalent: a compromised agent that
+// reaches a Docker daemon — e.g. an unauthenticated daemon TCP socket bound to the host
+// bridge — can launch a root container that bind-mounts the host filesystem writable and
+// escalate to host root. Rootless Docker runs the daemon as your unprivileged user, which
+// neutralizes that path (a container's "root" maps to your own UID on the host).
+function warnIfRootfulDaemon(): void {
+  let securityOptions: string;
+  try {
+    securityOptions = execFileSync(
+      "docker",
+      ["info", "--format", "{{.SecurityOptions}}"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    );
+  } catch {
+    // Couldn't query the daemon (Docker not installed or not running). The build step
+    // below surfaces the real error — there's nothing useful to warn about here.
+    return;
+  }
+  if (!securityOptions.includes("rootless")) {
+    console.warn(
+      [
+        "⚠️  Docker is running in rootful mode (the daemon runs as root).",
+        "    A compromised agent that reaches a Docker daemon can escalate to host root.",
+        "    Consider rootless Docker: https://docs.docker.com/engine/security/rootless/",
+        "",
+      ].join("\n"),
+    );
+  }
+}
+
 let exitCode = 0;
 try {
+  warnIfRootfulDaemon();
+
   // Build
   execFileSync("docker", ["build", "-t", IMAGE_NAME, tmpDir], {
     stdio: "inherit",
