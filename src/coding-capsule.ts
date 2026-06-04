@@ -269,7 +269,8 @@ function warnIfRootfulDaemon(): void {
       [
         "⚠️  Docker is running in rootful mode (the daemon runs as root).",
         "    A compromised agent that reaches a Docker daemon can escalate to host root.",
-        "    Consider rootless Docker: https://docs.docker.com/engine/security/rootless/",
+        "    Use rootless Docker: https://docs.docker.com/engine/security/rootless/",
+        "    Background: https://x.com/sluongng/status/2060746160558543217",
         "",
       ].join("\n"),
     );
