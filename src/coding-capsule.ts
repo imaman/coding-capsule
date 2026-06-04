@@ -2,6 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+import net from "node:net";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
@@ -277,9 +278,69 @@ function warnIfRootfulDaemon(): void {
   }
 }
 
+// The Docker daemon's plaintext (unauthenticated) TCP port. 2376 is the TLS variant, which
+// requires client certs and is not probed here.
+const DOCKER_PLAINTEXT_TCP_PORT = 2375;
+
+// Attempt a TCP connection to host:port, resolving true if it accepts within timeoutMs.
+// Nothing is sent — the daemon only sees a connect/disconnect.
+function isPortOpen(host: string, port: number, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let settled = false;
+    const settle = (open: boolean): void => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(open);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => settle(true));
+    socket.once("timeout", () => settle(false));
+    socket.once("error", () => settle(false));
+    socket.connect(port, host);
+  });
+}
+
+// Warn when the Docker daemon is reachable over plaintext TCP from inside the container. A
+// container reaches host services via the default bridge's gateway IP, so if the daemon is
+// bound to 0.0.0.0 (or the bridge) on port 2375, that address answers from within the
+// container and a compromised agent can drive the Docker API directly — launching a root
+// container that bind-mounts the host filesystem. A daemon bound only to 127.0.0.1 does not
+// answer on the gateway IP, so this probe does not fire for that (container-unreachable) case.
+async function warnIfDaemonExposedOverTcp(): Promise<void> {
+  let gateway: string;
+  try {
+    gateway = execFileSync(
+      "docker",
+      ["network", "inspect", "bridge", "--format", "{{range .IPAM.Config}}{{.Gateway}}{{end}}"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+  } catch {
+    // Couldn't determine the bridge gateway (Docker not installed / not running). The build
+    // step below surfaces the real error — nothing useful to warn about here.
+    return;
+  }
+  if (!gateway) return;
+
+  if (await isPortOpen(gateway, DOCKER_PLAINTEXT_TCP_PORT, 500)) {
+    console.warn(
+      [
+        `⚠️  The Docker daemon is reachable over plaintext TCP at ${gateway}:${DOCKER_PLAINTEXT_TCP_PORT}.`,
+        "    That address is reachable from inside the container, so a compromised agent could",
+        "    drive the Docker API to launch a root container and take over the host.",
+        "    Stop exposing the daemon over unauthenticated TCP — remove `-H tcp://0.0.0.0:2375`",
+        '    from the daemon config, or disable Docker Desktop\'s "expose daemon without TLS".',
+        "",
+      ].join("\n"),
+    );
+  }
+}
+
 let exitCode = 0;
 try {
   warnIfRootfulDaemon();
+  await warnIfDaemonExposedOverTcp();
 
   // Build
   execFileSync("docker", ["build", "-t", IMAGE_NAME, tmpDir], {
