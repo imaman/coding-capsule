@@ -17,6 +17,11 @@ function failMe(message: string): never {
 // nested symlinks to absolute paths instead of copying their targets.
 // See https://github.com/nodejs/node/issues/59168
 function copyDereferenced(src: string, dst: string): void {
+  // Skip dangling symlinks: statSync follows links and throws ENOENT when the target
+  // is gone (e.g. ~/.claude/debug/latest pointing at a rotated-away log).
+  if (fs.lstatSync(src).isSymbolicLink() && !fs.existsSync(src)) {
+    return;
+  }
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
     fs.mkdirSync(dst, { recursive: true });
