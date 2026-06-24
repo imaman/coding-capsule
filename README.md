@@ -60,6 +60,9 @@ coding-capsule --no-truecolor
 > [!WARNING]
 > Your Claude Code credentials are readable inside the container. A prompt injection attack (e.g., malicious instructions hidden in a repo file) could exfiltrate them over the network. The credentials are only useful for Claude API calls — they cannot access your machine, GitHub, or other services. The exact blast radius depends on the authentication method (OAuth token vs. raw API key). To mitigate this, you could add an egress proxy that restricts outbound traffic to known-good domains.
 
+> [!TIP]
+> Run coding-capsule against a **[rootless Docker](https://docs.docker.com/engine/security/rootless/)** daemon. By default the Docker daemon runs as root, which makes "can talk to Docker" root-equivalent — if a compromised agent ever reaches a Docker daemon (for example, an unauthenticated daemon TCP socket reachable on the host bridge), it can launch a root container that bind-mounts the host filesystem writable and escalate to host root. Rootless Docker runs the daemon as your unprivileged user, so a container's "root" maps to your own UID and that escalation no longer works. coding-capsule prints a warning when it detects a rootful daemon. Relatedly, never expose the Docker daemon over unauthenticated TCP.
+
 ## Security analysis
 
 For a detailed breakdown of the security posture, see [blastradius.md](blastradius.md) — risk profile, attack surface, and mitigations.
